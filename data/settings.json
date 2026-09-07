@@ -1,0 +1,6 @@
+{
+  "discordWebhookUrl": "",
+  "pollingIntervalSec": 60,
+  "soundAlert": true,
+  "browserPush": true
+}

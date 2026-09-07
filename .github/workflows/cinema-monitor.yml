@@ -1,0 +1,37 @@
+name: 24/7 Cinema Alert Bot
+
+on:
+  schedule:
+    # Runs every 10 minutes, 24/7 in GitHub Cloud (Computer can be turned off!)
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check-and-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Cinema Monitoring & Dispatch Alerts
+        env:
+          NODE_ENV: production
+        run: node server/cli-monitor.js
+
+      - name: Commit updated tasks and history
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update cinema monitor status [skip ci]"
+          file_pattern: "data/*.json"
