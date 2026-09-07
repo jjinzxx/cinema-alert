@@ -1,6 +1,7 @@
 // client/src/components/SettingsModal.jsx
 import React, { useState, useEffect } from 'react';
 import { X, Save, Send, ShieldAlert, Volume2, Clock, CheckCircle, ExternalLink, User } from 'lucide-react';
+import { API_BASE } from '../config.js';
 
 export default function SettingsModal({ isOpen, onClose, token, currentUser, onSettingsUpdated }) {
   const [discordWebhookUrl, setDiscordWebhookUrl] = useState('');
@@ -15,7 +16,7 @@ export default function SettingsModal({ isOpen, onClose, token, currentUser, onS
       if (currentUser) {
         setDiscordWebhookUrl(currentUser.discordWebhookUrl || '');
       }
-      fetch('/api/settings')
+      fetch(`${API_BASE}/api/settings`)
         .then(res => res.json())
         .then(data => {
           setPollingIntervalSec(data.pollingIntervalSec || 60);
@@ -37,7 +38,7 @@ export default function SettingsModal({ isOpen, onClose, token, currentUser, onS
     setSaving(true);
     try {
       // 1. Save personal webhook
-      await fetch('/api/auth/webhook', {
+      await fetch(`${API_BASE}/api/auth/webhook`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -47,29 +48,32 @@ export default function SettingsModal({ isOpen, onClose, token, currentUser, onS
       });
 
       // 2. Save settings
-      const res = await fetch('/api/settings', {
+      const res = await fetch(`${API_BASE}/api/settings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          pollingIntervalSec,
-          soundAlert,
-          discordWebhookUrl: discordWebhookUrl.trim()
+          pollingIntervalSec: Number(pollingIntervalSec),
+          soundAlert
         })
       });
 
-      const updated = await res.json();
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || '저장 실패');
+
       if (onSettingsUpdated) {
         onSettingsUpdated({
-          ...updated,
+          pollingIntervalSec: Number(pollingIntervalSec),
+          soundAlert,
           discordWebhookUrl: discordWebhookUrl.trim()
         });
       }
+      alert('설정이 안전하게 저장되었습니다!');
       onClose();
     } catch (err) {
-      alert(`설정 저장 실패: ${err.message}`);
+      alert(`저장 중 오류 발생: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -83,7 +87,7 @@ export default function SettingsModal({ isOpen, onClose, token, currentUser, onS
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch('/api/test-webhook', {
+      const res = await fetch(`${API_BASE}/api/test-webhook`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ webhookUrl: discordWebhookUrl.trim() })

@@ -7,6 +7,7 @@ import HistoryLogs from './components/HistoryLogs.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import { BellRing, ExternalLink } from 'lucide-react';
+import { API_BASE } from './config.js';
 
 function playDingSound() {
   try {
@@ -52,7 +53,7 @@ export default function App() {
       return;
     }
 
-    fetch('/api/auth/me', {
+    fetch(`${API_BASE}/api/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => {
@@ -76,7 +77,7 @@ export default function App() {
       return;
     }
     try {
-      const res = await fetch('/api/tasks', {
+      const res = await fetch(`${API_BASE}/api/tasks`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -89,7 +90,7 @@ export default function App() {
   const fetchLogs = useCallback(async () => {
     try {
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const res = await fetch('/api/logs', { headers });
+      const res = await fetch(`${API_BASE}/api/logs`, { headers });
       const data = await res.json();
       setLogs(data);
     } catch (err) {
@@ -110,7 +111,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', {
+      await fetch(`${API_BASE}/api/auth/logout`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -126,7 +127,7 @@ export default function App() {
     let eventSource = null;
 
     function connectSSE() {
-      eventSource = new EventSource('/api/events');
+      eventSource = new EventSource(`${API_BASE}/api/events`);
 
       eventSource.onopen = () => {
         setIsConnected(true);

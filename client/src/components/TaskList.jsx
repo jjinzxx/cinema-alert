@@ -1,6 +1,7 @@
 // client/src/components/TaskList.jsx
 import React, { useState } from 'react';
 import { Play, Pause, Trash2, Zap, ExternalLink, Clock, Calendar, CheckCircle2, Film } from 'lucide-react';
+import { API_BASE } from '../config.js';
 
 const BOOKING_URLS = {
   CGV: 'https://cgv.co.kr/ticket',
@@ -14,7 +15,7 @@ export default function TaskList({ tasks, token, onRefresh }) {
   const handleToggleStatus = async (task) => {
     const nextStatus = task.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
     try {
-      await fetch(`/api/tasks/${task.id}`, {
+      await fetch(`${API_BASE}/api/tasks/${task.id}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -31,7 +32,7 @@ export default function TaskList({ tasks, token, onRefresh }) {
   const handleDelete = async (id) => {
     if (!confirm('이 감시 작업을 삭제하시겠습니까?')) return;
     try {
-      await fetch(`/api/tasks/${id}`, {
+      await fetch(`${API_BASE}/api/tasks/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -46,7 +47,7 @@ export default function TaskList({ tasks, token, onRefresh }) {
   const handleInstantCheck = async (id) => {
     setCheckingId(id);
     try {
-      const res = await fetch(`/api/tasks/${id}/check`, {
+      const res = await fetch(`${API_BASE}/api/tasks/${id}/check`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

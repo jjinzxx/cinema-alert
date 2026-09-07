@@ -1,6 +1,7 @@
 // client/src/components/AuthModal.jsx
 import React, { useState } from 'react';
 import { X, LogIn, UserPlus, Shield, User, Lock, AlertCircle } from 'lucide-react';
+import { API_BASE } from '../config.js';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [isRegister, setIsRegister] = useState(false);
@@ -21,7 +22,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     setLoading(true);
     setError(null);
 
-    const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
+    const endpoint = isRegister ? `${API_BASE}/api/auth/register` : `${API_BASE}/api/auth/login`;
 
     try {
       const res = await fetch(endpoint, {

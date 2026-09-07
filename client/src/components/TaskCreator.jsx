@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, MapPin, Film, Sparkles, CheckCircle, Flame, Calendar as CalendarIcon, LogIn } from 'lucide-react';
 import CalendarPicker from './CalendarPicker.jsx';
+import { API_BASE } from '../config.js';
 
 const PRESET_THEATERS = [
   { cinema: 'CGV', name: '용산아이파크몰', code: '0013', tag: '용아맥/4DX' },
@@ -35,7 +36,7 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
   useEffect(() => {
     let ignore = false;
     setLoadingTheaters(true);
-    fetch(`/api/theaters?cinema=${selectedCinema}`)
+    fetch(`${API_BASE}/api/theaters?cinema=${selectedCinema}`)
       .then(res => res.json())
       .then(data => {
         if (!ignore && Array.isArray(data)) {
@@ -79,7 +80,7 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/tasks', {
+      const res = await fetch(`${API_BASE}/api/tasks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
