@@ -5,7 +5,6 @@ import TaskCreator from './components/TaskCreator.jsx';
 import TaskList from './components/TaskList.jsx';
 import HistoryLogs from './components/HistoryLogs.jsx';
 import SettingsModal from './components/SettingsModal.jsx';
-import CloudGuideModal from './components/CloudGuideModal.jsx';
 import AuthModal from './components/AuthModal.jsx';
 import { BellRing, ExternalLink } from 'lucide-react';
 
@@ -42,7 +41,6 @@ export default function App() {
   const [isConnected, setIsConnected] = useState(false);
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [latestAlert, setLatestAlert] = useState(null);
 
@@ -186,7 +184,6 @@ export default function App() {
           if (!currentUser) setIsAuthOpen(true);
           else setIsSettingsOpen(true);
         }}
-        onOpenGuide={() => setIsGuideOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
         onLogout={handleLogout}
         tasksCount={tasks.length}
@@ -271,24 +268,22 @@ export default function App() {
         onAuthSuccess={handleAuthSuccess}
       />
 
-      <CloudGuideModal
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
-      />
-
-      {/* Minimalist Footer */}
+      {/* Minimalist Footer with jjinzxx Copyright */}
       <footer className="border-t border-borderLight bg-white py-6 text-center text-xs text-sage-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <p>© 2026 Cinema Alert • CGV, 메가박스, 롯데시네마 실시간 예매 오픈 알리미</p>
-          <div className="flex items-center gap-3">
-            <span>개인별 디스코드 웹훅 분리</span>
-            <span>•</span>
-            <button
-              onClick={() => setIsGuideOpen(true)}
-              className="text-sage-700 hover:underline font-medium"
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p>© 2026 Cinema Alert • CGV · 메가박스 · 롯데시네마 실시간 예매 오픈 알리미</p>
+          <div className="flex items-center gap-1.5 text-sage-600">
+            <span>Created by</span>
+            <a
+              href="https://github.com/jjinzxx"
+              target="_blank"
+              rel="noreferrer"
+              className="font-bold text-sage-800 hover:text-sage-950 hover:underline inline-flex items-center gap-1"
             >
-              컴퓨터 꺼도 24시간 실행하기 (안내)
-            </button>
+              <span>jjinzxx</span>
+            </a>
+            <span className="mx-1">•</span>
+            <span>All rights reserved.</span>
           </div>
         </div>
       </footer>

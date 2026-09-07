@@ -97,16 +97,6 @@ export default function Header({
             )}
           </div>
 
-          {/* Cloud 24H Guide Button */}
-          <button
-            onClick={onOpenGuide}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-sage-50 text-sage-700 border border-borderLight text-xs font-medium transition shadow-sm"
-            title="컴퓨터 꺼도 24시간 알림 받는 클라우드 무료 배포 안내"
-          >
-            <HelpCircle className="w-3.5 h-3.5 text-sage-500" />
-            <span className="hidden sm:inline">24시간 상시 감시</span>
-          </button>
-
           {/* Browser Notification Button */}
           {permission !== 'granted' ? (
             <button
