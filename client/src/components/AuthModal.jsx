@@ -33,7 +33,16 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         })
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      let data = {};
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        if (!res.ok) {
+          throw new Error('API 백엔드 서버에 연결할 수 없습니다. GitHub Pages는 정적 페이지만 제공하므로, 로컬 환경(http://localhost:4000)으로 접속하시거나 무료 백엔드 서버(Render 등) 연결이 필요합니다.');
+        }
+      }
+
       if (!res.ok) {
         throw new Error(data.error || '인증 처리에 실패했습니다.');
       }
