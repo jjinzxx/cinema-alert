@@ -275,7 +275,7 @@ export default function App() {
           <div className="flex items-center gap-1.5 text-sage-600">
             <span>Created by</span>
             <a
-              href="https://github.com/jjinzxx"
+              href="https://blog.naver.com/epspqm823"
               target="_blank"
               rel="noreferrer"
               className="font-bold text-sage-800 hover:text-sage-950 hover:underline inline-flex items-center gap-1"
