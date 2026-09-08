@@ -27,6 +27,40 @@
 
 ---
 
+## 🔐 사용자 계정 및 보안 아키텍처 (Security Architecture)
+
+본 서비스는 다중 사용자 환경에서 개인의 알림 설정과 개인정보를 안전하게 보호하기 위해 체계적인 보안 설계를 적용하고 있습니다.
+
+### 1. 비밀번호 단방향 암호화 (PBKDF2-SHA512 + Salt)
+* **평문 저장 불가**: 사용자가 입력한 비밀번호는 서버 메모리나 디스크에 절대 평문(Plaintext)으로 저장되지 않습니다.
+* **고유 Salt 적용**: 계정 생성 시 Node.js `crypto.randomBytes(16)`를 통해 128비트 암호학적 난수 Salt를 생성하여 계정마다 개별 부여합니다.
+* **반복 해싱**: `PBKDF2(Password-Based Key Derivation Function 2)` 알고리즘을 사용하여 SHA-512 해시 함수로 1,000회 반복 연산(`Key stretching`)한 64바이트 다이제스트 값만 데이터베이스에 보관합니다.
+* **공격 방어**: 사전에 해시값을 대량 계산해 둔 레인보우 테이블(Rainbow Table) 공격과 무차별 대입 공격(Brute Force)을 효과적으로 방어합니다.
+
+### 2. 세션 및 토큰 기반 안전한 인증 (Bearer Token)
+* **암호학적 난수 토큰**: 로그인 성공 시 `crypto.randomBytes(32)` (256비트 엔트로피)로 생성된 추측 불가능한 불투명(Opaque) 세션 토큰이 발급됩니다.
+* **인가(Authorization) 미들웨어**: 모든 API 호출은 `Authorization: Bearer <token>` 헤더를 통해 서버에서 실시간 유효성을 검증받습니다.
+* **즉시 세션 파기**: 로그아웃 시 서버 측 활성 세션 맵에서 해당 토큰을 즉각 삭제(Revoke)하여 재사용을 원천 차단합니다.
+
+### 3. 사용자별 데이터 완전 격리 (Multi-Tenant Isolation)
+* **감시 작업 격리**: 모든 예매 감시 작업(`tasks`)과 알림 기록(`logs`)은 고유 `userId`와 엄격하게 1:1로 바인딩됩니다.
+* **권한 검증**: 타인의 토큰으로는 다른 사용자의 감시 목록을 열람, 수정, 삭제할 수 없도록 서버 엔드포인트마다 엄격한 소유권 검증(401 Unauthorized / 404 Not Found)을 수행합니다.
+* **전용 디스코드 웹훅 분리**: 개인별 웹훅 URL은 각자의 계정 내에만 안전하게 보관되며, 예매가 오픈되었을 때 해당 작업을 등록한 당사자의 디스코드 채널로만 타겟 발송됩니다.
+
+### 4. Git 저장소 및 배포 보안 (`.gitignore`)
+* 계정 데이터(`data/users.json`) 및 활성 세션(`data/sessions.json`)은 `.gitignore`에 등록되어 GitHub 등 공개 원격 저장소에 절대 커밋되거나 유출되지 않습니다.
+* Render 클라우드 및 로컬 환경 모두에서 개인 데이터의 격리와 무결성을 보장합니다.
+
+---
+
+## 🌐 서비스 접속 주소 (Live URLs)
+
+* **공식 연결 도메인**: [https://시네마알리미.메인.한국](https://시네마알리미.메인.한국)
+* **Render 클라우드 24/7 서비스**: [https://cinema-alert.onrender.com](https://cinema-alert.onrender.com)
+* **GitHub Pages 미러**: [https://jjinzxx.github.io/cinema-alert/](https://jjinzxx.github.io/cinema-alert/)
+
+---
+
 ## 🚀 빠른 시작 (실행 방법)
 
 프로젝트 폴더 위치: `C:\Users\Like\.gemini\antigravity\scratch\cinema-alert`
@@ -75,3 +109,9 @@ cinema-alert/
 │   │   └── components/   # UI 컴포넌트
 └── data/                 # 작업 및 설정 JSON 데이터
 ```
+
+---
+
+## 👨‍💻 Created by
+* **jjinzxx**: [https://blog.naver.com/epspqm823](https://blog.naver.com/epspqm823)
+
