@@ -1,6 +1,6 @@
 // client/src/components/TaskCreator.jsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Film, Sparkles, CheckCircle, Flame, Calendar as CalendarIcon, LogIn } from 'lucide-react';
+import { Plus, Search, MapPin, Film, Sparkles, CheckCircle, Flame, Calendar as CalendarIcon, LogIn, X } from 'lucide-react';
 import CalendarPicker from './CalendarPicker.jsx';
 import { API_BASE } from '../config.js';
 
@@ -37,13 +37,13 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
     let ignore = false;
     setLoadingTheaters(true);
     fetch(`${API_BASE}/api/theaters?cinema=${selectedCinema}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('지점 목록 조회 실패');
+        return res.json();
+      })
       .then(data => {
         if (!ignore && Array.isArray(data)) {
           setTheaters(data);
-          if (data.length > 0) {
-            setSelectedTheaterCode(data[0].code);
-          }
         }
       })
       .catch(console.error)
@@ -53,9 +53,39 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
     return () => { ignore = true; };
   }, [selectedCinema]);
 
+  // Keep selectedTheaterCode strictly in sync with available & filtered theaters
+  useEffect(() => {
+    if (theaters.length === 0) {
+      setSelectedTheaterCode('');
+      return;
+    }
+    const filterLower = searchFilter.trim().toLowerCase();
+    const matches = filterLower
+      ? theaters.filter(t => 
+          (t.name || '').toLowerCase().includes(filterLower) || 
+          (t.region || '').toLowerCase().includes(filterLower)
+        )
+      : theaters;
+
+    setSelectedTheaterCode(prev => {
+      // If current selection is still in the filtered list, retain it!
+      const exists = matches.some(t => t.code === prev);
+      if (exists) return prev;
+      // Otherwise immediately auto-select the first matching theater
+      return matches.length > 0 ? matches[0].code : '';
+    });
+  }, [theaters, searchFilter]);
+
   const handleApplyPreset = (preset) => {
     setSelectedCinema(preset.cinema);
+    setSearchFilter('');
     setSelectedTheaterCode(preset.code);
+  };
+
+  const handleCinemaChange = (cinemaId) => {
+    if (selectedCinema === cinemaId) return;
+    setSelectedCinema(cinemaId);
+    setSearchFilter('');
   };
 
   const handleSubmit = async (e) => {
@@ -71,12 +101,16 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
       return;
     }
     if (!selectedTheaterCode) {
-      alert('극장을 선택해 주세요.');
+      alert('극장을 선택해 주세요. 검색 결과가 없다면 검색어를 지워주세요.');
       return;
     }
 
     const currentTheater = theaters.find(t => t.code === selectedTheaterCode);
-    const theaterName = currentTheater ? currentTheater.name : '선택 극장';
+    if (!currentTheater) {
+      alert('유효한 극장 지점이 선택되지 않았습니다.');
+      return;
+    }
+    const theaterName = currentTheater.name;
 
     setSubmitting(true);
     try {
@@ -109,9 +143,14 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
     }
   };
 
-  const filteredTheaters = theaters.filter(t => 
-    (t.name || '').includes(searchFilter) || (t.region || '').includes(searchFilter)
-  );
+  const currentTheater = theaters.find(t => t.code === selectedTheaterCode);
+  const filterLower = searchFilter.trim().toLowerCase();
+  const filteredTheaters = filterLower
+    ? theaters.filter(t => 
+        (t.name || '').toLowerCase().includes(filterLower) || 
+        (t.region || '').toLowerCase().includes(filterLower)
+      )
+    : theaters;
 
   return (
     <div className="bg-white border border-borderLight rounded-2xl p-6 shadow-[0_2px_16px_rgba(40,50,40,0.03)]">
@@ -166,7 +205,7 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => setSelectedCinema(c.id)}
+                  onClick={() => handleCinemaChange(c.id)}
                   className={`py-2 px-1 rounded-lg text-xs font-bold transition text-center ${
                     selectedCinema === c.id
                       ? 'bg-white text-sage-900 shadow-sm border border-borderLight'
@@ -195,22 +234,58 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
                   type="text"
                   value={searchFilter}
                   onChange={(e) => setSearchFilter(e.target.value)}
-                  placeholder="지점명 또는 지역 검색 (예: 용산, 강남)"
-                  className="w-full pl-8 pr-3 py-2 bg-sage-50 border border-borderLight rounded-xl text-xs text-sage-900 placeholder-sage-400 focus:outline-none focus:bg-white focus:border-sage-500 transition"
+                  placeholder="지점명 또는 지역 검색 (예: 수원, 용산)"
+                  className="w-full pl-8 pr-7 py-2 bg-sage-50 border border-borderLight rounded-xl text-xs text-sage-900 placeholder-sage-400 focus:outline-none focus:bg-white focus:border-sage-500 transition"
                 />
+                {searchFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilter('')}
+                    className="absolute right-2.5 top-2.5 text-sage-400 hover:text-sage-600 p-0.5 rounded-full hover:bg-sage-200/50 transition"
+                    title="검색어 지우기"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
               <select
                 value={selectedTheaterCode}
                 onChange={(e) => setSelectedTheaterCode(e.target.value)}
-                className="w-full py-2 px-3 bg-sage-50 border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:bg-white focus:border-sage-500 transition"
+                disabled={filteredTheaters.length === 0}
+                className="w-full py-2 px-3 bg-sage-50 border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:bg-white focus:border-sage-500 transition disabled:opacity-50"
               >
-                {filteredTheaters.map((t) => (
-                  <option key={t.code} value={t.code}>
-                    [{t.region}] {t.name}
-                  </option>
-                ))}
+                {filteredTheaters.length === 0 ? (
+                  <option value="">검색 결과가 없습니다</option>
+                ) : (
+                  filteredTheaters.map((t) => (
+                    <option key={t.code} value={t.code}>
+                      [{t.region}] {t.name}
+                    </option>
+                  ))
+                )}
               </select>
+            </div>
+
+            {/* Selected Theater Confirmation Badge */}
+            <div className="mt-2 flex items-center justify-between text-[11px]">
+              {currentTheater ? (
+                <div className="flex items-center gap-1.5 text-sage-700">
+                  <span className="text-sage-500 font-medium">선택 완료:</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-sage-100 font-bold text-sage-900 border border-sage-200/60">
+                    [{selectedCinema}] {currentTheater.region ? `[${currentTheater.region}] ` : ''}{currentTheater.name}
+                  </span>
+                </div>
+              ) : (
+                <div className="text-amber-600 font-medium">
+                  {filteredTheaters.length === 0 ? '일치하는 지점이 없습니다. 검색어를 지워주세요.' : '지점을 선택해 주세요.'}
+                </div>
+              )}
+              {searchFilter && (
+                <span className="text-sage-500 text-[11px]">
+                  검색 결과 {filteredTheaters.length}개
+                </span>
+              )}
             </div>
           </div>
         </div>
