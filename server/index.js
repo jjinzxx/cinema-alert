@@ -19,7 +19,8 @@ import {
   getSettings,
   saveSettings,
   getLogs,
-  getTaskById
+  getTaskById,
+  initStorage
 } from './storage.js';
 import { startScheduler, checkSingleTask, restartSchedulerWithInterval } from './scheduler.js';
 import { addClient, broadcast } from './notifiers/sse.js';
@@ -273,7 +274,14 @@ app.get('*', (req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🎬 Cinema Alert Server listening on http://localhost:${PORT}`);
-  startScheduler();
+async function startServer() {
+  await initStorage();
+  app.listen(PORT, () => {
+    console.log(`🎬 Cinema Alert Server listening on http://localhost:${PORT}`);
+    startScheduler();
+  });
+}
+
+startServer().catch(err => {
+  console.error('Fatal server boot error:', err);
 });

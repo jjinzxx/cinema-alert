@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { hashPassword, verifyPassword, generateToken } from './auth.js';
+import { initDb, getDbValue, setDbValue, isDbEnabled } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,6 +40,46 @@ function ensureDataDir() {
   }
 }
 
+export async function initStorage() {
+  ensureDataDir();
+  if (isDbEnabled()) {
+    const ready = await initDb();
+    if (ready) {
+      const dbUsers = await getDbValue('users');
+      if (dbUsers && Array.isArray(dbUsers)) {
+        fs.writeFileSync(USERS_FILE, JSON.stringify(dbUsers, null, 2), 'utf8');
+      } else {
+        const localUsers = getUsers();
+        if (localUsers.length > 0) await setDbValue('users', localUsers);
+      }
+
+      const dbTasks = await getDbValue('tasks');
+      if (dbTasks && Array.isArray(dbTasks)) {
+        fs.writeFileSync(TASKS_FILE, JSON.stringify(dbTasks, null, 2), 'utf8');
+      } else {
+        const localTasks = getAllTasks();
+        if (localTasks.length > 0) await setDbValue('tasks', localTasks);
+      }
+
+      const dbSessions = await getDbValue('sessions');
+      if (dbSessions && typeof dbSessions === 'object') {
+        fs.writeFileSync(SESSIONS_FILE, JSON.stringify(dbSessions, null, 2), 'utf8');
+      }
+
+      const dbSettings = await getDbValue('settings');
+      if (dbSettings) {
+        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(dbSettings, null, 2), 'utf8');
+      }
+
+      const dbLogs = await getDbValue('logs');
+      if (dbLogs && Array.isArray(dbLogs)) {
+        fs.writeFileSync(LOGS_FILE, JSON.stringify(dbLogs, null, 2), 'utf8');
+      }
+      console.log('📦 Local storage synchronized with PostgreSQL Cloud Database.');
+    }
+  }
+}
+
 // --- Users & Auth ---
 
 export function getUsers() {
@@ -53,6 +94,7 @@ export function getUsers() {
 export function saveUsers(users) {
   ensureDataDir();
   fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf8');
+  if (isDbEnabled()) setDbValue('users', users);
 }
 
 export function registerUser(username, password) {
@@ -144,6 +186,7 @@ function getSessions() {
 function saveSessions(sessions) {
   ensureDataDir();
   fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf8');
+  if (isDbEnabled()) setDbValue('sessions', sessions);
 }
 
 export function createSession(userId) {
@@ -189,6 +232,7 @@ export function getTasksByUser(userId) {
 export function saveTasks(tasks) {
   ensureDataDir();
   fs.writeFileSync(TASKS_FILE, JSON.stringify(tasks, null, 2), 'utf8');
+  if (isDbEnabled()) setDbValue('tasks', tasks);
 }
 
 export function getTaskById(id) {
@@ -284,6 +328,7 @@ export function getSettings() {
 export function saveSettings(settings) {
   ensureDataDir();
   fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+  if (isDbEnabled()) setDbValue('settings', settings);
 }
 
 // --- Activity Logs ---
@@ -312,7 +357,9 @@ export function addLog(logEntry) {
       ...logEntry
     };
     logs.unshift(newEntry);
-    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs.slice(0, 200), null, 2), 'utf8');
+    const savedLogs = logs.slice(0, 200);
+    fs.writeFileSync(LOGS_FILE, JSON.stringify(savedLogs, null, 2), 'utf8');
+    if (isDbEnabled()) setDbValue('logs', savedLogs);
     return newEntry;
   } catch (err) {
     console.error('Failed to write log:', err);
