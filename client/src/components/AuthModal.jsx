@@ -50,7 +50,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
 
       // Successful auth
       if (onAuthSuccess) {
-        onAuthSuccess(data.token, data.user);
+        onAuthSuccess(data.token, data.user, { username: username.trim(), password });
       }
       onClose();
     } catch (err) {

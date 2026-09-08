@@ -198,7 +198,20 @@ export function getTaskById(id) {
 
 export function addTask(taskData, userId) {
   const tasks = getAllTasks();
-  const id = 'task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+  
+  // Check if identical task already exists for this user (prevents duplicates during sync/restore)
+  const existing = tasks.find(t => 
+    t.userId === (userId || 'default') &&
+    t.cinema === taskData.cinema &&
+    t.theaterCode === taskData.theaterCode &&
+    t.date === taskData.date &&
+    (t.movieKeyword || '').trim().toLowerCase() === (taskData.movieKeyword || '').trim().toLowerCase()
+  );
+  if (existing) {
+    return existing;
+  }
+
+  const id = taskData.id || ('task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
   const newTask = {
     id,
     userId: userId || 'default',
@@ -209,8 +222,8 @@ export function addTask(taskData, userId) {
     movieKeyword: taskData.movieKeyword.trim(),
     specialOnly: taskData.specialOnly || 'ALL',
     webhookUrl: taskData.webhookUrl || '',
-    status: 'ACTIVE',
-    createdAt: new Date().toISOString(),
+    status: taskData.status || 'ACTIVE',
+    createdAt: taskData.createdAt || new Date().toISOString(),
     lastCheckedAt: null,
     lastResult: '등록됨 (대기 중)',
     matchedCount: 0,

@@ -46,6 +46,7 @@ export default function SettingsModal({ isOpen, onClose, token, currentUser, onS
         },
         body: JSON.stringify({ webhookUrl: discordWebhookUrl.trim() })
       });
+      localStorage.setItem('cinema_alert_webhook', discordWebhookUrl.trim());
 
       // 2. Save settings
       const res = await fetch(`${API_BASE}/api/settings`, {

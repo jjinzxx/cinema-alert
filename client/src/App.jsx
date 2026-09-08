@@ -62,26 +62,117 @@ export default function App() {
       })
       .then(user => {
         setCurrentUser(user);
+        if (user.discordWebhookUrl) {
+          localStorage.setItem('cinema_alert_webhook', user.discordWebhookUrl);
+        }
       })
-      .catch(() => {
-        // Token invalid or expired
+      .catch(async () => {
+        // Token invalid or server redeployed/restarted!
+        // Perform silent auto-recovery using locally saved credentials
+        const savedCreds = JSON.parse(localStorage.getItem('cinema_alert_user_creds') || 'null');
+        if (savedCreds && savedCreds.username && savedCreds.password) {
+          try {
+            console.log('🔄 서버 재배포/재시작 감지: 계정 및 감시 작업 자동 복구 시도 중...');
+            let authRes = await fetch(`${API_BASE}/api/auth/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(savedCreds)
+            });
+
+            // If user does not exist in fresh container, re-register seamlessly
+            if (!authRes.ok) {
+              authRes = await fetch(`${API_BASE}/api/auth/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(savedCreds)
+              });
+            }
+
+            if (authRes.ok) {
+              const authData = await authRes.json();
+              setToken(authData.token);
+              localStorage.setItem('cinema_alert_token', authData.token);
+              setCurrentUser(authData.user);
+
+              // Restore webhook if present
+              const savedWebhook = localStorage.getItem('cinema_alert_webhook');
+              if (savedWebhook) {
+                await fetch(`${API_BASE}/api/auth/webhook`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authData.token}`
+                  },
+                  body: JSON.stringify({ webhookUrl: savedWebhook })
+                });
+              }
+
+              // Restore tasks from backup
+              const localTasks = JSON.parse(localStorage.getItem('cinema_alert_tasks_backup') || '[]');
+              if (localTasks.length > 0) {
+                await fetch(`${API_BASE}/api/tasks`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authData.token}`
+                  },
+                  body: JSON.stringify({ tasks: localTasks })
+                });
+              }
+
+              fetchTasks(authData.token);
+              console.log('✅ 계정 및 감시 작업이 완벽하게 자동 복구되었습니다!');
+              return;
+            }
+          } catch (recoveryErr) {
+            console.error('Silent auto-recovery failed:', recoveryErr);
+          }
+        }
+
         localStorage.removeItem('cinema_alert_token');
         setToken('');
         setCurrentUser(null);
       });
   }, [token]);
 
-  const fetchTasks = useCallback(async () => {
-    if (!token) {
+  const fetchTasks = useCallback(async (overrideToken) => {
+    const activeToken = overrideToken || token;
+    if (!activeToken) {
       setTasks([]);
       return;
     }
     try {
       const res = await fetch(`${API_BASE}/api/tasks`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${activeToken}` }
       });
-      const data = await res.json();
-      setTasks(data);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          // If server has no tasks (e.g. wiped after deploy), but client has local backup, restore them!
+          const localTasks = JSON.parse(localStorage.getItem('cinema_alert_tasks_backup') || '[]');
+          if (data.length === 0 && localTasks.length > 0) {
+            await fetch(`${API_BASE}/api/tasks`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${activeToken}`
+              },
+              body: JSON.stringify({ tasks: localTasks })
+            });
+            const refreshed = await fetch(`${API_BASE}/api/tasks`, {
+              headers: { 'Authorization': `Bearer ${activeToken}` }
+            });
+            const refreshedData = await refreshed.json();
+            setTasks(refreshedData);
+            return;
+          }
+
+          setTasks(data);
+          if (data.length > 0) {
+            localStorage.setItem('cinema_alert_tasks_backup', JSON.stringify(data));
+          }
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch tasks', err);
     }
@@ -103,8 +194,14 @@ export default function App() {
     fetchLogs();
   }, [fetchTasks, fetchLogs]);
 
-  const handleAuthSuccess = (newToken, user) => {
+  const handleAuthSuccess = (newToken, user, creds) => {
     localStorage.setItem('cinema_alert_token', newToken);
+    if (creds) {
+      localStorage.setItem('cinema_alert_user_creds', JSON.stringify(creds));
+    }
+    if (user && user.discordWebhookUrl) {
+      localStorage.setItem('cinema_alert_webhook', user.discordWebhookUrl);
+    }
     setToken(newToken);
     setCurrentUser(user);
   };
@@ -117,6 +214,8 @@ export default function App() {
       });
     } catch {}
     localStorage.removeItem('cinema_alert_token');
+    localStorage.removeItem('cinema_alert_user_creds');
+    localStorage.removeItem('cinema_alert_tasks_backup');
     setToken('');
     setCurrentUser(null);
     setTasks([]);
