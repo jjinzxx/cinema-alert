@@ -13,6 +13,43 @@ const PRESET_THEATERS = [
   { cinema: 'CGV', name: '영등포', code: '0059', tag: 'SCREENX' }
 ];
 
+const TIME_PRESETS = [
+  { id: 'ALL', label: '전체 시간 (기본)', start: '', end: '', desc: '모든 시간대' },
+  { id: 'MORNING', label: '조조/오전 (06~12시)', start: '06:00', end: '12:00' },
+  { id: 'AFTERNOON', label: '오후 (12~18시)', start: '12:00', end: '18:00' },
+  { id: 'EVENING', label: '저녁/퇴근길 (18~23시)', start: '18:00', end: '23:00' },
+  { id: 'NIGHT', label: '심야 (23~04시)', start: '23:00', end: '04:00' }
+];
+
+const TIME_OPTIONS = [
+  { value: '', label: '제한 없음 (전체)' }
+];
+for (let h = 6; h <= 23; h++) {
+  const hh = String(h).padStart(2, '0');
+  const labelSuffix = h === 6 ? ' (아침)'
+    : h === 9 ? ' (조조)'
+    : h === 12 ? ' (낮 12시)'
+    : h === 18 ? ' (퇴근/저녁)'
+    : h === 21 ? ' (밤 9시)'
+    : h === 23 ? ' (심야)' : '';
+  TIME_OPTIONS.push({ value: `${hh}:00`, label: `${hh}:00${labelSuffix}` });
+  TIME_OPTIONS.push({ value: `${hh}:30`, label: `${hh}:30` });
+}
+TIME_OPTIONS.push({ value: '24:00', label: '24:00 (자정)' });
+TIME_OPTIONS.push({ value: '01:00', label: '익일 01:00 (새벽)' });
+TIME_OPTIONS.push({ value: '02:00', label: '익일 02:00 (새벽)' });
+TIME_OPTIONS.push({ value: '03:00', label: '익일 03:00 (새벽)' });
+TIME_OPTIONS.push({ value: '04:00', label: '익일 04:00 (새벽)' });
+
+function formatKoreanDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+
 export default function TaskCreator({ onTaskCreated, currentUser, token, onRequireAuth }) {
   const [selectedCinema, setSelectedCinema] = useState('CGV');
   const [theaters, setTheaters] = useState([]);
@@ -33,6 +70,15 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
   const [endTime, setEndTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successNotice, setSuccessNotice] = useState(false);
+
+  const activePreset = (() => {
+    if (!startTime && !endTime) return 'ALL';
+    if (startTime === '06:00' && endTime === '12:00') return 'MORNING';
+    if (startTime === '12:00' && endTime === '18:00') return 'AFTERNOON';
+    if (startTime === '18:00' && endTime === '23:00') return 'EVENING';
+    if (startTime === '23:00' && endTime === '04:00') return 'NIGHT';
+    return 'CUSTOM';
+  })();
 
   // Load theaters when selected cinema changes
   useEffect(() => {
@@ -308,12 +354,129 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
           />
         </div>
 
-        {/* Step 4: Movie Title & Filter */}
+        {/* Step 4: Time Range Filter (Optional, positioned right after Date) */}
+        <div className="bg-sage-50/60 border border-borderLight rounded-2xl p-4 sm:p-5 space-y-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-bold text-sage-900 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-sage-600" />
+                <span>4. 희망 상영 시간대 (선택 사항)</span>
+              </label>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-sage-100 text-sage-700 border border-sage-200/70">
+                선택 안 하면 하루 전체 감시
+              </span>
+            </div>
+
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1 flex-wrap">
+              {TIME_PRESETS.map((p) => {
+                const isActive = activePreset === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setStartTime(p.start);
+                      setEndTime(p.end);
+                    }}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-semibold transition ${
+                      isActive
+                        ? 'bg-sage-700 text-white shadow-xs'
+                        : 'bg-white text-sage-700 hover:bg-sage-100 border border-borderLight'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Time Selectors: Start & End */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+            <div>
+              <label className="block text-[11px] font-semibold text-sage-700 mb-1">
+                시작 시간 (이 시간 이후 회차)
+              </label>
+              <select
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-full py-2.5 px-3 bg-white border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:border-sage-500 transition font-medium"
+              >
+                {TIME_OPTIONS.map((opt) => (
+                  <option key={'start_' + opt.value} value={opt.value}>
+                    {opt.value ? `시작: ${opt.label}` : '시작 시간 제한 없음 (처음부터)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-sage-700 mb-1">
+                종료 시간 (이 시간 이전 회차)
+              </label>
+              <select
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="w-full py-2.5 px-3 bg-white border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:border-sage-500 transition font-medium"
+              >
+                {TIME_OPTIONS.map((opt) => (
+                  <option key={'end_' + opt.value} value={opt.value}>
+                    {opt.value ? `종료: ${opt.label}` : '종료 시간 제한 없음 (끝까지)'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Interactive Reassurance Banner */}
+          <div className={`p-3 rounded-xl text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition ${
+            (startTime || endTime)
+              ? 'bg-sage-100/90 border border-sage-200 text-sage-900 shadow-xs'
+              : 'bg-white border border-borderLight text-sage-600'
+          }`}>
+            <div className="flex items-start sm:items-center gap-2">
+              <span className="text-base shrink-0">{(startTime || endTime) ? '🎯' : '✨'}</span>
+              <div>
+                <div className="font-bold flex items-center gap-1.5 flex-wrap">
+                  <span className="text-sage-800">{formatKoreanDate(selectedDate)}</span>
+                  <span className="text-sage-400">|</span>
+                  <span className={startTime || endTime ? 'text-sage-900' : 'text-sage-700'}>
+                    {(startTime || endTime)
+                      ? `[${startTime || '00:00'} ~ ${endTime || '24:00'}] 사이 회차만 알림`
+                      : '전체 시간대 (모든 상영 회차 알림)'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-sage-600 mt-0.5">
+                  {(startTime || endTime)
+                    ? `지정한 시간대에 시작하는 상영 스케줄이 열리면 디스코드로 즉시 알려드립니다.`
+                    : `상영 시작 시간에 관계없이 해당 날짜의 모든 오픈 회차를 감시합니다.`}
+                </p>
+              </div>
+            </div>
+
+            {(startTime || endTime) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStartTime('');
+                  setEndTime('');
+                }}
+                className="self-start sm:self-auto px-2.5 py-1 rounded-lg bg-white hover:bg-rose-50 text-sage-600 hover:text-rose-600 border border-borderLight text-[11px] font-semibold transition shrink-0 shadow-xs flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                <span>전체 시간으로 초기화</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Step 5 & 6: Movie Title & Screen Filter */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-sage-700 mb-1.5 flex items-center gap-1">
               <Film className="w-3.5 h-3.5 text-sage-500" />
-              <span>4. 감시할 영화 제목 (키워드)</span>
+              <span>5. 감시할 영화 제목 (키워드)</span>
             </label>
             <input
               type="text"
@@ -327,12 +490,12 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
           <div>
             <label className="block text-xs font-semibold text-sage-700 mb-1.5 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-sage-500" />
-              <span>5. 상영관 필터</span>
+              <span>6. 상영관 필터</span>
             </label>
             <select
               value={specialOnly}
               onChange={(e) => setSpecialOnly(e.target.value)}
-              className="w-full py-2.5 px-3 bg-sage-50 border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:bg-white focus:border-sage-500 transition"
+              className="w-full py-2.5 px-3 bg-sage-50 border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:border-sage-500 transition"
             >
               <option value="ALL">전체 상영관</option>
               <option value="IMAX">IMAX 전용</option>
@@ -340,97 +503,6 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
               <option value="4DX">4DX 전용</option>
               <option value="SUPER PLEX">수퍼플렉스 전용</option>
             </select>
-          </div>
-        </div>
-
-        {/* Step 6: Time Range Filter (Optional) */}
-        <div className="p-3.5 bg-sage-50/60 border border-borderLight rounded-xl space-y-2.5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <label className="text-xs font-semibold text-sage-800 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-sage-600" />
-              <span>6. 희망 상영 시간대 (선택 사항)</span>
-              <span className="text-[11px] font-normal text-sage-500">
-                - 미선택 시 전체 시간 알림
-              </span>
-            </label>
-
-            {/* Quick Presets */}
-            <div className="flex items-center gap-1 flex-wrap">
-              {[
-                { label: '전체 시간', start: '', end: '' },
-                { label: '조조/오전', start: '06:00', end: '12:00' },
-                { label: '오후', start: '12:00', end: '18:00' },
-                { label: '저녁/퇴근길', start: '18:00', end: '23:00' },
-                { label: '심야', start: '23:00', end: '04:00' }
-              ].map((p) => {
-                const isActive = (startTime === p.start && endTime === p.end);
-                return (
-                  <button
-                    key={p.label}
-                    type="button"
-                    onClick={() => {
-                      setStartTime(p.start);
-                      setEndTime(p.end);
-                    }}
-                    className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition ${
-                      isActive
-                        ? 'bg-sage-600 text-white shadow-xs'
-                        : 'bg-white text-sage-700 hover:bg-sage-100 border border-borderLight'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
-            <div>
-              <span className="block text-[11px] font-medium text-sage-600 mb-1">시작 시간 (이후)</span>
-              <input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full py-2 px-3 bg-white border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:border-sage-500 transition"
-              />
-            </div>
-
-            <div>
-              <span className="block text-[11px] font-medium text-sage-600 mb-1">종료 시간 (이전)</span>
-              <input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="w-full py-2 px-3 bg-white border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:border-sage-500 transition"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-[11px] pt-1">
-            <span className="text-sage-600">
-              {(startTime || endTime) ? (
-                <span className="font-semibold text-sage-800">
-                  🎯 [{startTime || '00:00'} ~ {endTime || '24:00'}] 사이 시작 회차만 감시 및 알림 전송
-                </span>
-              ) : (
-                <span className="text-sage-500">
-                  선택 안 함: 하루 전체(00:00~24:00)의 모든 상영 회차에 대해 알림이 옵니다.
-                </span>
-              )}
-            </span>
-            {(startTime || endTime) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setStartTime('');
-                  setEndTime('');
-                }}
-                className="text-sage-500 hover:text-rose-600 font-medium hover:underline text-[11px] shrink-0"
-              >
-                시간 초기화 (전체)
-              </button>
-            )}
           </div>
         </div>
 
