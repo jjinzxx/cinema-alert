@@ -148,29 +148,8 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // If server has no tasks (e.g. wiped after deploy), but client has local backup, restore them!
-          const localTasks = JSON.parse(localStorage.getItem('cinema_alert_tasks_backup') || '[]');
-          if (data.length === 0 && localTasks.length > 0) {
-            await fetch(`${API_BASE}/api/tasks`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${activeToken}`
-              },
-              body: JSON.stringify({ tasks: localTasks })
-            });
-            const refreshed = await fetch(`${API_BASE}/api/tasks`, {
-              headers: { 'Authorization': `Bearer ${activeToken}` }
-            });
-            const refreshedData = await refreshed.json();
-            setTasks(refreshedData);
-            return;
-          }
-
           setTasks(data);
-          if (data.length > 0) {
-            localStorage.setItem('cinema_alert_tasks_backup', JSON.stringify(data));
-          }
+          localStorage.setItem('cinema_alert_tasks_backup', JSON.stringify(data));
         }
       }
     } catch (err) {

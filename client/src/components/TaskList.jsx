@@ -38,6 +38,13 @@ export default function TaskList({ tasks, token, onRefresh }) {
           'Authorization': `Bearer ${token}`
         }
       });
+      // Immediately remove from local backup so it never resurrects
+      try {
+        const currentBackup = JSON.parse(localStorage.getItem('cinema_alert_tasks_backup') || '[]');
+        const updatedBackup = currentBackup.filter(t => t.id !== id);
+        localStorage.setItem('cinema_alert_tasks_backup', JSON.stringify(updatedBackup));
+      } catch {}
+
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error(err);
