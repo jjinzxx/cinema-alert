@@ -22,7 +22,7 @@ import {
   getTaskById,
   initStorage
 } from './storage.js';
-import { startScheduler, checkSingleTask, restartSchedulerWithInterval } from './scheduler.js';
+import { startScheduler, checkSingleTask, restartSchedulerWithInterval, runMonitoringCycle } from './scheduler.js';
 import { addClient, broadcast } from './notifiers/sse.js';
 import { testDiscordWebhook } from './notifiers/discord.js';
 import { isDbEnabled } from './db.js';
@@ -65,6 +65,20 @@ app.get('/api/health', (req, res) => {
     cloudDb: isDbEnabled(),
     time: new Date().toISOString()
   });
+});
+
+// --- 24/7 Keep-Alive & Cloud Check Endpoint ---
+app.get('/api/cron/check', (req, res) => {
+  try {
+    runMonitoringCycle().catch(console.error);
+    res.json({
+      status: 'ok',
+      message: '24/7 Monitoring cycle triggered & Render kept awake',
+      time: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // --- 1. Auth Endpoints ---
