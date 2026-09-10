@@ -249,7 +249,9 @@ export function addTask(taskData, userId) {
     t.cinema === taskData.cinema &&
     t.theaterCode === taskData.theaterCode &&
     t.date === taskData.date &&
-    (t.movieKeyword || '').trim().toLowerCase() === (taskData.movieKeyword || '').trim().toLowerCase()
+    (t.movieKeyword || '').trim().toLowerCase() === (taskData.movieKeyword || '').trim().toLowerCase() &&
+    (t.startTime || '') === (taskData.startTime || '') &&
+    (t.endTime || '') === (taskData.endTime || '')
   );
   if (existing) {
     return existing;
@@ -265,6 +267,8 @@ export function addTask(taskData, userId) {
     date: taskData.date,
     movieKeyword: taskData.movieKeyword.trim(),
     specialOnly: taskData.specialOnly || 'ALL',
+    startTime: taskData.startTime || '',
+    endTime: taskData.endTime || '',
     webhookUrl: taskData.webhookUrl || '',
     status: taskData.status || 'ACTIVE',
     createdAt: taskData.createdAt || new Date().toISOString(),
@@ -276,6 +280,10 @@ export function addTask(taskData, userId) {
   tasks.unshift(newTask);
   saveTasks(tasks);
 
+  const timeRangeInfo = (newTask.startTime || newTask.endTime)
+    ? ` [시간: ${newTask.startTime || '00:00'} ~ ${newTask.endTime || '24:00'}]`
+    : '';
+
   addLog({
     userId: newTask.userId,
     taskId: id,
@@ -283,7 +291,7 @@ export function addTask(taskData, userId) {
     cinema: newTask.cinema,
     theaterName: newTask.theaterName,
     movieTitle: newTask.movieKeyword,
-    message: `새 예매 감시 작업이 등록되었습니다: [${newTask.cinema}] ${newTask.theaterName} / ${newTask.date} / "${newTask.movieKeyword}"`
+    message: `새 예매 감시 작업이 등록되었습니다: [${newTask.cinema}] ${newTask.theaterName} / ${newTask.date} / "${newTask.movieKeyword}"${timeRangeInfo}`
   });
 
   return newTask;

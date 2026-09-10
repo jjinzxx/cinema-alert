@@ -161,14 +161,24 @@ export default function TaskList({ tasks, token, onRefresh }) {
                   </h4>
                 </div>
 
-                {/* Meta info: Date & Last check */}
-                <div className="flex flex-wrap items-center gap-2.5 text-xs text-sage-600 mb-4">
+                {/* Meta info: Date, Time Range & Last check */}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-sage-600 mb-4">
                   <span className="flex items-center gap-1.5 bg-sage-50 px-2.5 py-1 rounded-lg border border-borderLight font-semibold text-sage-800">
                     <Calendar className="w-3.5 h-3.5 text-sage-500" />
                     <span>{task.date}</span>
                   </span>
+                  {(task.startTime || task.endTime) ? (
+                    <span className="flex items-center gap-1 bg-sage-100/80 text-sage-800 px-2.5 py-1 rounded-lg border border-sage-200/80 font-semibold" title="지정된 시간대만 감시">
+                      <Clock className="w-3.5 h-3.5 text-sage-600" />
+                      <span>{task.startTime || '00:00'} ~ {task.endTime || '24:00'}</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 bg-sage-50 text-sage-500 px-2.5 py-1 rounded-lg border border-borderLight text-[11px]" title="하루 전체 시간대 감시">
+                      <Clock className="w-3 h-3 text-sage-400" />
+                      <span>전체 시간</span>
+                    </span>
+                  )}
                   <span className="flex items-center gap-1 text-sage-500 text-[11px]">
-                    <Clock className="w-3.5 h-3.5" />
                     <span>확인: {task.lastCheckedAt ? new Date(task.lastCheckedAt).toLocaleTimeString('ko-KR') : '대기 중'}</span>
                   </span>
                 </div>

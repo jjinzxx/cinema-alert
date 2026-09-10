@@ -23,8 +23,28 @@ function matchesSpecialFilter(screenType, screenName, specialOnly) {
   return true;
 }
 
+function matchesTimeFilter(startTime, rangeStart, rangeEnd) {
+  if (!startTime) return true;
+  const sStart = (rangeStart || '').trim();
+  const sEnd = (rangeEnd || '').trim();
+  if (!sStart && !sEnd) return true;
+
+  const st = startTime.trim();
+  if (sStart && sEnd) {
+    if (sStart <= sEnd) {
+      return st >= sStart && st <= sEnd;
+    } else {
+      // Overnight range, e.g. 23:00 ~ 04:00
+      return st >= sStart || st <= sEnd;
+    }
+  }
+  if (sStart) return st >= sStart;
+  if (sEnd) return st <= sEnd;
+  return true;
+}
+
 export async function checkSingleTask(task) {
-  const { id, userId, cinema, theaterCode, theaterName, date, movieKeyword, specialOnly, webhookUrl } = task;
+  const { id, userId, cinema, theaterCode, theaterName, date, movieKeyword, specialOnly, startTime, endTime, webhookUrl } = task;
   const normKeyword = normalize(movieKeyword);
 
   try {
@@ -40,7 +60,8 @@ export async function checkSingleTask(task) {
     const matched = showtimes.filter(s => {
       const matchTitle = normalize(s.movieTitle).includes(normKeyword);
       const matchSpecial = matchesSpecialFilter(s.screenType, s.screenName, specialOnly);
-      return matchTitle && matchSpecial;
+      const matchTime = matchesTimeFilter(s.startTime, startTime, endTime);
+      return matchTitle && matchSpecial && matchTime;
     });
 
     const now = new Date().toISOString();
@@ -120,9 +141,10 @@ export async function checkSingleTask(task) {
         return { success: true, count: 0, showtimes: matched };
       }
     } else {
+      const timeDesc = (startTime || endTime) ? ` [${startTime || '00:00'}~${endTime || '24:00'}]` : '';
       const updated = updateTask(id, {
         lastCheckedAt: now,
-        lastResult: `상영 일정 미등록 (감시 중)`,
+        lastResult: `상영 일정 미등록${timeDesc} (감시 중)`,
         matchedCount: 0
       });
       broadcast('TASK_UPDATED', updated);

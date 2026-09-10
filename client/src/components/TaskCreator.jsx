@@ -1,6 +1,6 @@
 // client/src/components/TaskCreator.jsx
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Film, Sparkles, CheckCircle, Flame, Calendar as CalendarIcon, LogIn, X } from 'lucide-react';
+import { Plus, Search, MapPin, Film, Sparkles, CheckCircle, Flame, Calendar as CalendarIcon, LogIn, X, Clock } from 'lucide-react';
 import CalendarPicker from './CalendarPicker.jsx';
 import { API_BASE } from '../config.js';
 
@@ -26,9 +26,11 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
   const defaultDate = tomorrow.toISOString().slice(0, 10);
   const [selectedDate, setSelectedDate] = useState(defaultDate);
 
-  // Movie keyword
+  // Movie keyword & Filters
   const [movieKeyword, setMovieKeyword] = useState('');
   const [specialOnly, setSpecialOnly] = useState('ALL');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successNotice, setSuccessNotice] = useState(false);
 
@@ -126,7 +128,9 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
           theaterName,
           date: selectedDate,
           movieKeyword: movieKeyword.trim(),
-          specialOnly
+          specialOnly,
+          startTime: startTime || '',
+          endTime: endTime || ''
         })
       });
 
@@ -135,6 +139,8 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
       setSuccessNotice(true);
       setTimeout(() => setSuccessNotice(false), 3000);
       setMovieKeyword('');
+      setStartTime('');
+      setEndTime('');
       if (onTaskCreated) onTaskCreated();
     } catch (err) {
       alert(`등록 중 오류가 발생했습니다: ${err.message}`);
@@ -334,6 +340,97 @@ export default function TaskCreator({ onTaskCreated, currentUser, token, onRequi
               <option value="4DX">4DX 전용</option>
               <option value="SUPER PLEX">수퍼플렉스 전용</option>
             </select>
+          </div>
+        </div>
+
+        {/* Step 6: Time Range Filter (Optional) */}
+        <div className="p-3.5 bg-sage-50/60 border border-borderLight rounded-xl space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <label className="text-xs font-semibold text-sage-800 flex items-center gap-1.5">
+              <Clock className="w-3.5 h-3.5 text-sage-600" />
+              <span>6. 희망 상영 시간대 (선택 사항)</span>
+              <span className="text-[11px] font-normal text-sage-500">
+                - 미선택 시 전체 시간 알림
+              </span>
+            </label>
+
+            {/* Quick Presets */}
+            <div className="flex items-center gap-1 flex-wrap">
+              {[
+                { label: '전체 시간', start: '', end: '' },
+                { label: '조조/오전', start: '06:00', end: '12:00' },
+                { label: '오후', start: '12:00', end: '18:00' },
+                { label: '저녁/퇴근길', start: '18:00', end: '23:00' },
+                { label: '심야', start: '23:00', end: '04:00' }
+              ].map((p) => {
+                const isActive = (startTime === p.start && endTime === p.end);
+                return (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => {
+                      setStartTime(p.start);
+                      setEndTime(p.end);
+                    }}
+                    className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition ${
+                      isActive
+                        ? 'bg-sage-600 text-white shadow-xs'
+                        : 'bg-white text-sage-700 hover:bg-sage-100 border border-borderLight'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+            <div>
+              <span className="block text-[11px] font-medium text-sage-600 mb-1">시작 시간 (이후)</span>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="w-full py-2 px-3 bg-white border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:border-sage-500 transition"
+              />
+            </div>
+
+            <div>
+              <span className="block text-[11px] font-medium text-sage-600 mb-1">종료 시간 (이전)</span>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="w-full py-2 px-3 bg-white border border-borderLight rounded-xl text-xs text-sage-900 focus:outline-none focus:border-sage-500 transition"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] pt-1">
+            <span className="text-sage-600">
+              {(startTime || endTime) ? (
+                <span className="font-semibold text-sage-800">
+                  🎯 [{startTime || '00:00'} ~ {endTime || '24:00'}] 사이 시작 회차만 감시 및 알림 전송
+                </span>
+              ) : (
+                <span className="text-sage-500">
+                  선택 안 함: 하루 전체(00:00~24:00)의 모든 상영 회차에 대해 알림이 옵니다.
+                </span>
+              )}
+            </span>
+            {(startTime || endTime) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStartTime('');
+                  setEndTime('');
+                }}
+                className="text-sage-500 hover:text-rose-600 font-medium hover:underline text-[11px] shrink-0"
+              >
+                시간 초기화 (전체)
+              </button>
+            )}
           </div>
         </div>
 
